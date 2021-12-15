@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>NodeTree</title>
+
+<style>
+
+svg {
+  overflow: hidden;
+}
+
+.interactable{
+  float: left; visibility: hidden
+}
+html, body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: Georgia, serif;
+}
+path { fill: none; stroke: #666; stroke-width: .5px; }
+text {
+  cursor: pointer;
+}
+svg:not(.hover) text:hover, .hover tspan:hover {
+  fill: #f99;
+}
+
+.thumb a {
+  color: #000;
+  font-weight: bold;
+  text-decoration: none;
+}
+.thumb:hover a {
+  color: #f60;
+}
+
+.slidecontainer {
+  width: 100%; /* Width of the outside container */
+}
+
+.loading{
+
+}
+
+/* The slider itself */
+.slider {
+  -webkit-appearance: none;  /* Override default CSS styles */
+  appearance: none;
+  width: 100%; /* Full-width */
+  height: 25px; /* Specified height */
+  background: #d3d3d3; /* Grey background */
+  outline: none; /* Remove outline */
+  opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+  transition: opacity .2s;
+}
+
+/* Mouse-over effects */
+.slider:hover {
+  opacity: 1; /* Fully shown on mouse-over */
+}
+
+/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; /* Override default look */
+  appearance: none;
+  width: 25px; /* Set a specific slider handle width */
+  height: 25px; /* Slider handle height */
+  background: #04AA6D; /* Green background */
+  cursor: pointer; /* Cursor on hover */
+}
+
+.slider::-moz-range-thumb {
+  width: 25px; /* Set a specific slider handle width */
+  height: 25px; /* Slider handle height */
+  background: #04AA6D; /* Green background */
+  cursor: pointer; /* Cursor on hover */
+}
+</style>
+<body>
+
+<!-- <button id="button" style="float: left;">switch align mode</button>
+<text id="mode1">Basic Algorithm</text>
+<div style="clear: both;">
+<text style="top: 50px;" id="hint"> Hint: to click the name of province or city to unfold it</text>
+</div>
+<div style="clear: both;">
+    <text style="top: 50px;" id="hint">Basic Algorithm: the height of a node adds up heights of its children nodes'</text>
+</div>
+<div style="clear: both;">
+    <text style="top: 50px;" id="hint">Reingold-Tilford Algorithm: the position of a node will consider its layer's blanks to compact layout</text>
+</div> -->
+
+<div style="position: absolute;" id="canvas"></div>
+<div style="position: absolute;" id="svg"></div>
+<div style="position: absolute;">
+  <div>
+  <button id="button0" class="interactable">class 0</button>
+  <button id="button1" class="interactable">class 1</button>
+  <button id="button2" class="interactable">class 2</button>
+  <button id="button3" class="interactable">class 3</button>
+  <button id="button4" class="interactable">class 4</button>
+  <button id="button5" class="interactable" >class 5</button>
+  <button id="button6" class="interactable">class 6</button>
+  <button id="button7" class="interactable">class 7</button>
+  <button id="button8" class="interactable">class 8</button>
+  <button id="button9" class="interactable">class 9</button>
+  <button id="buttonall" class="interactable">class all</button>
+  </div>
+  <div>
+    <button id="buttontriw" class="interactable">kernel triweight</button>
+    <button id="buttontric" class="interactable">kernel tricube</button>
+    <button id="buttongau" class="interactable">kernel guassian</button>
+    <button id="buttoncos" class="interactable">kernel cosine</button>
+    <div class="slidecontainer" >
+      <div class="interactable">slider for scale factor</div>
+      <input class="interactable" type="range" min="1" max="100" value="50" class="slider" id="range">
+    </div>
+  </div>
+
+</div>
+
+<div style="position: absolute;" class="loading">
+loading data and applying t-sne algorithms , please wait for about 30 seconds....</div>
+  
+<script src="d3.js"></script>
+<script src="numpy.js"></script>
+<script src="tsne.js"></script>
+<script src="densitymap.js"></script>
+
+</body>
+</html>
