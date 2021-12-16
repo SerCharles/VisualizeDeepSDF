@@ -1,0 +1,34 @@
+{
+    "data":[
+        {
+            "id": "01",
+            "class": "chair",
+            "tsneX": 0.1,
+            "tsneY": 0.1,
+            "img": "../img/example1.png"
+        },{
+            "id": "02",
+            "class": "toilet",
+            "tsneX": 0.2,
+            "tsneY": 0.2,
+            "img": "../img/example2.png"
+        }
+    ],
+    "transitions":[
+        {
+            "sourceId": "01",
+            "targetId": "02",
+            "frames":[
+                {
+                    "frame": 0,
+                    "sourceWeight": 0.1,
+                    "img": "../img/transion_01_02_0.1.png"
+                },{
+                    "frame": 1,
+                    "sourceWeight": 0.9,
+                    "img": "../img/transion_01_02_0.2.png"
+                }
+            ]
+        }
+    ]
+}

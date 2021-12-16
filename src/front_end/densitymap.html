@@ -43,6 +43,12 @@ svg:not(.hover) text:hover, .hover tspan:hover {
 
 }
 
+#line{
+    width: 100%;
+    margin: 20px 0;
+    height: 300px;
+  }
+
 /* The slider itself */
 .slider {
   -webkit-appearance: none;  /* Override default CSS styles */
@@ -94,7 +100,8 @@ svg:not(.hover) text:hover, .hover tspan:hover {
 
 <div style="position: absolute;" id="canvas"></div>
 <div style="position: absolute;" id="svg"></div>
-<div style="position: absolute;">
+<div id="line"></div>
+<!-- <div style="position: absolute;">
   <div>
   <button id="button0" class="interactable">class 0</button>
   <button id="button1" class="interactable">class 1</button>
@@ -119,14 +126,12 @@ svg:not(.hover) text:hover, .hover tspan:hover {
     </div>
   </div>
 
-</div>
+</div> -->
 
-<div style="position: absolute;" class="loading">
-loading data and applying t-sne algorithms , please wait for about 30 seconds....</div>
-  
-<script src="d3.js"></script>
-<script src="numpy.js"></script>
-<script src="tsne.js"></script>
+<!-- <div style="position: absolute;" class="loading">
+loading data and applying t-sne algorithms , please wait for about 30 seconds....</div> -->
+<script src="jquery.js"></script>
+<script src="d3.min.js"></script>
 <script src="densitymap.js"></script>
 
 </body>

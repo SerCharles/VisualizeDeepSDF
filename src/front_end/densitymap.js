@@ -6,8 +6,9 @@ async function load (url) {
   console.log(data, shape)
   return [data, shape]
 }
-var w = 1000
-var h = 1000
+
+var w = window.innerWidth
+var h = window.innerHeight
 var h2 = h * h
 
 var canvas = d3.select('#canvas')
@@ -21,63 +22,42 @@ var svg = d3.select('#svg')
   .attr('width', w)
   .attr('height', h)
 
-var gridSize = 4
-var grid = d3.merge(d3.range(0, h / gridSize).map(function (i) {
-  return d3.range(0, w / gridSize).map(function (j) { return [j * gridSize + gridSize / 2, i * gridSize + gridSize / 2] })
-}))
-
-var heatmapColor = d3.scale.linear()
-  .clamp(true)
-  .domain([0, 0.1111111111111111, 0.2222222222222222, 0.3333333333333333, 0.4444444444444444, 0.5555555555555555, 0.6666666666666666, 0.7777777777777777, 0.8888888888888888, 1])
-  .range(['#ffffff', '#fff7f3', '#fde0dd', '#fcc5c0', '#fa9fb5',
-    '#f768a1', '#dd3497', '#ae017e', '#7a0177', '#49006a'])
-
-var outerScale = d3.scale.pow()
-  .exponent(0.4)
-  .domain([0, 1])
-  .range([0, 1])
-
-var kernel = gaussian
-var density_XY_point
-var scale_factor = 1.0
-
-function plot (Y) {
+function plot (X, Y, d) {
   svg.selectAll('circle')
-    .data(Y)
+    .data(d)
     .enter()
     .append('circle')
     .attr('cx', function (d) {
-      return w / 2
+      return X(d)
     })
     .attr('cy', function (d) {
-      return h / 2
+      return Y(d)
     })
     .attr('r', 2.5)
 
   console.log(svg)
 }
 
-colors = [
-  'rgb(255, 241, 0)',
-  'rgb(255, 140, 0)',
-  'rgb(232, 17, 35)',
-  'rgb(236, 0, 140)',
-  'rgb(104, 33, 122)',
-  'rgb(0, 24, 143)',
-  'rgb(0, 188, 242)',
-  'rgb(0, 178, 148)',
-  'rgb(0, 158, 73)',
-  'rgb(186, 216, 10)']
-function get_color_by_class (cls) {
-  return colors[cls]
-}
-
-function set_color (label) {
+function setColor (C, d) {
   svg.selectAll('circle')
-    .data(label)
+    .data(d)
     .attr('fill', function (d) {
-      return get_color_by_class(d)
+      return C(d)
     })
+}
+function getColorByClasses (label) {
+  let colors = {
+    'chair': 'rgb(255, 241, 0)',
+    'toilet': 'rgb(255, 140, 0)' }
+  return colors[label]
+  // 'rgb(232, 17, 35)',
+  // 'rgb(236, 0, 140)',
+  // 'rgb(104, 33, 122)',
+  // 'rgb(0, 24, 143)',
+  // 'rgb(0, 188, 242)',
+  // 'rgb(0, 178, 148)',
+  // 'rgb(0, 158, 73)',
+  // 'rgb(186, 216, 10)'
 }
 
 function update_plot (Y, i) {
@@ -92,36 +72,6 @@ function update_plot (Y, i) {
     .attr('cy', function (d) {
       return d[1] * 10 + h / 2
     })
-}
-
-function sleep (time) {
-  return new Promise((resolve) => setTimeout(resolve, time))
-}
-
-function consumer (fn, time) {
-  let tasks = []
-  let timer
-
-  return function (...args) {
-    tasks.push(fn.bind(this, ...args))
-    if (timer == null) {
-      timer = setInterval(() => {
-        tasks.shift().call(this)
-        if (tasks.length <= 0) {
-          clearInterval(timer)
-          timer = null
-        }
-      }, time)
-    }
-  }
-}
-
-function wait (ms) {
-  var start = new Date().getTime()
-  var end = start
-  while (end < start + ms) {
-    end = new Date().getTime()
-  }
 }
 
 var init_data = []
@@ -139,166 +89,109 @@ function get_points_by_class (label, Y, cls) {
   return class_data
 }
 
-var image_data
-var image_shape
-var label_data
-var label_shape
-load('sampled_image.npy').then((v) => {
-  console.log(v)
-  image_data = v[0]
-  image_shape = v[1]
-  console.log(image_data, image_shape)
-  return load('sampled_label.npy')
+$.getJSON('data.json', function (file) {
+  console.log('cao')
+  // load objects
+  let tsneXs = []
+  let tsneYs = []
+  let classes = []
+  let ids2index = {}
+  let imgSrcs = []
+  console.log(file)
+  for (let i in file.data) {
+    let data = file.data[i]
+    tsneXs.push(data.tsneX)
+    tsneYs.push(data.tsneY)
+    classes.push(data.class)
+    imgSrcs.push(data.img)
+    ids2index[data.id] = i
+  }
+
+  // load transitions
+  let transitions = []
+  for (let trans of file.transitions) {
+    transitions.push(trans)
+  }
+
+  let X = (d) => { return tsneXs[d] * w }
+  let Y = (d) => { return tsneYs[d] * h }
+  let C = (d) => { return getColorByClasses(classes[d]) }
+  let d = [...Array(tsneXs.length).keys()]
+  console.log(d)
+  plot(X, Y, d)
+  setColor(C, d)
+
+  lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index)
 })
-  .then((v) => {
-    console.log(v)
-    label_data = v[0]
-    label_shape = v[1]
 
-    console.log(label_data, label_shape)
-
-    var opt = {}
-    opt.epsilon = 10 // epsilon is learning rate (10 = default)
-    opt.perplexity = 30 // roughly how many neighbors each point influences (30 = default)
-    opt.dim = 2 // dimensionality of the embedding (2 = default)
-
-    var tsne = new tsnejs.tSNE(opt) // create a tSNE instance
-
-    // initialize data. Here we have 3 points and some example pairwise dissimilarities
-    var dists = []
-    var image_size = image_shape[1] * image_shape[2]
-    for (i of Array(image_shape[0]).keys()) {
-      dists.push(image_data.slice(i * image_size, i * image_size + image_size).map((v) => {
-        return v / 255.0
-      }))
+function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index) {
+  let transionsXs = []
+  let transionsYs = []
+  for (let t = 0; t < transitions.length; t += 1) {
+    let transition = transitions[t]
+    let sid = transition['sourceId']
+    let tid = transition['targetId']
+    let sindex = ids2index[sid]
+    let tindex = ids2index[tid]
+    let sx = tsneXs[sindex]
+    let sy = tsneYs[sindex]
+    let tx = tsneXs[tindex]
+    let ty = tsneYs[tindex]
+    let frames = transition['frames']
+    transionsXs.push(sx)
+    transionsYs.push(sy)
+    for (let frame of frames) {
+      let sw = frame['sourceWeight']
+      let tw = 1 - sw
+      let fx = sw * tx + tw * sx
+      transionsXs.push(fx)
+      let fy = sw * ty + tw * sy
+      transionsYs.push(fy)
     }
-    console.log(dists)
-    tsne.initDataRaw(dists)
-    result_hist = []
-    for (let iter = 0; iter < 10; iter++) {
-      console.log(iter)
-      for (var k = 0; k < 50; k++) {
-        tsne.step() // every time you call this, solution gets better
-      }
-      var Z = tsne.getSolution() // Y is an array of 2-D points that you can plot
-      result_hist.push(Z)
+    console.log(t, transitions.length - 1, t === (transitions.length - 1))
+    if (t === (transitions.length - 1)) {
+      transionsXs.push(tx)
+      transionsYs.push(ty)
     }
-    density_XY_point = result_hist[result_hist.length - 1]
-    draw_density_map()
+  }
+  console.log(transionsXs)
+  var x = (d) => { return w * transionsXs[d] }
+  var y = (d) => { return h * transionsYs[d] }
+  let data = [...Array(transionsXs.length).keys()]
+  var lineFunction = d3.line()
+    .x(function (d, i) { return x(d) })
+    .y(function (d, i) { return y(d) })
+    .curve(d3.curveLinear)
 
-    plot(init_data)
-    set_color(label_data)
+  // data is created inside the function so it is always unique
+  let repeat = () => {
+    // Uncomment following line to clear the previously drawn line
+    // svg.selectAll("path").remove();
 
-    for (c in result_hist) {
-      update_plot(result_hist[c], c)
-    }
+    // Set a light grey class on old paths
+    svgline.selectAll('path').attr('class', 'old').remove()
 
-    d3.selectAll('.interactable').style('visibility', 'visible')
-    d3.selectAll('.loading').style('visibility', 'hidden')
-    for (let i = 0; i < 10; i++) {
-      d3.select('#button' + i.toString()).on('click', function () {
-        const context = canvas.node().getContext('2d')
-        context.clearRect(0, 0, canvas.width, canvas.height)
-        density_XY_point = get_points_by_class(label_data, result_hist[result_hist.length - 1], i)
-        // console.log(data)
-        draw_density_map()
-      })
-    }
-    d3.select('#buttonall').on('click', function () {
-      const context = canvas.node().getContext('2d')
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      density_XY_point = result_hist[result_hist.length - 1]
-      draw_density_map()
-    })
+    var path = svgline.append('path')
+      .attr('d', lineFunction(data))
+      .attr('stroke', 'darkgrey')
+      .attr('stroke-width', '2')
+      .attr('fill', 'none')
 
-    d3.select('#buttontriw').on('click', function () {
-      const context = canvas.node().getContext('2d')
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      kernel = triweight
-      draw_density_map()
-    })
-    d3.select('#buttontric').on('click', function () {
-      const context = canvas.node().getContext('2d')
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      kernel = tricube
-      draw_density_map()
-    })
-    d3.select('#buttongau').on('click', function () {
-      const context = canvas.node().getContext('2d')
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      kernel = gaussian
-      draw_density_map()
-    })
-    d3.select('#buttoncos').on('click', function () {
-      const context = canvas.node().getContext('2d')
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      kernel = cosine
-      draw_density_map()
-    })
+    var totalLength = path.node().getTotalLength()
 
-    d3.select('#range').on('change', function (e) {
-      scale_factor = (parseInt(this.value) + 1) / 50.0
-      const context = canvas.node().getContext('2d')
-      context.clearRect(0, 0, canvas.width, canvas.height)
-      draw_density_map()
-    })
-  })
-
-function relative_pos2absolute (pos) {
-  return [pos[0] * 10 + w / 2, pos[1] * 10 + h / 2]
+    path
+      .attr('stroke-dasharray', totalLength + ' ' + totalLength)
+      .attr('stroke-dashoffset', totalLength)
+      .transition()
+      .duration(4000)
+      .ease(d3.easeLinear)
+      .attr('stroke-dashoffset', 0)
+      .on('end', repeat)
+  }
+  repeat()
 }
-
-function absolute_pos2relative (pos) {
-  return [(pos[0] - w / 2) / 10, (pos[1] - h / 2) / 10]
-}
-
-function kde (gridPoint, xyPoints) {
-  return d3.mean(xyPoints, function (p) {
-    // console.log(p, absolute_pos2relative(gridPoint))
-    return kernel(norm(p, absolute_pos2relative(gridPoint)) * scale_factor)
-  })
-}
-
-function norm (v1, v2) {
-  return Math.sqrt((v1[0] - v2[0]) * (v1[0] - v2[0]) + (v1[1] - v2[1]) * (v1[1] - v2[1]))
-}
-
-function clamp (x) {
-  return x > 1 ? 1 : (x < -1 ? -1 : x)
-}
-
-function triweight (x) {
-  return 1.09375 * Math.pow((1 - clamp(x) * clamp(x)), 3)
-}
-
-function tricube (x) {
-  return 0.86419753086 * Math.pow(1 - Math.pow(Math.abs(clamp(x)), 3), 3)
-}
-
-function cosine (x) {
-  return 0.78539816339 * Math.cos(1.57079632679 * clamp(x))
-}
-
-function gaussian (x) {
-  // sqrt(2 * PI) is approximately 2.5066
-  return Math.exp(-x * x / 2) / 2.5066
-}
-
-function draw_density_map () {
-  var context = canvas.node().getContext('2d')
-  densities = grid.map(function (point) { return kde(point, density_XY_point) })
-  console.log(densities)
-  outerScale.domain([0, d3.max(densities)])
-
-  grid.forEach(function (point, idx) {
-    context.beginPath()
-
-    // console.log(densities)
-    context.fillStyle = heatmapColor(outerScale(densities[idx]))
-
-    // Subtract to get the corner of the grid cell
-    context.rect(point[0] - gridSize / 2, point[1] - gridSize / 2, gridSize, gridSize)
-    context.fill()
-    context.closePath()
-  })
-}
+var svgline = d3.select('#line')
+  .append('svg')
+  .attr('width', w)
+  .attr('height', h)
+  .attr('id', 'visualization')
