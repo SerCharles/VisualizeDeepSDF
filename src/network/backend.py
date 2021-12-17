@@ -7,6 +7,7 @@ import numpy as np
 import torch
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 class Backend():
@@ -64,6 +65,39 @@ class Backend():
                 self.chamfer_distances[index] = cd 
         self.chamfer_distances = np.array(self.chamfer_distances)
 
+    def tsne_mean_shape(self):
+        """TSNE the mean shape
+        """
+        tsne = TSNE(n_components=2)
+        mean_codes = []
+        for i in range(5):
+            mask = (self.labels == i)
+            selected_code = self.codes[mask]
+            mean_code = np.mean(selected_code, axis=0)
+            mean_codes.append(mean_code)
+        mean_codes = np.stack(mean_codes, axis=0)
+        kebab_codes = np.concatenate((self.codes, mean_codes), axis=0)
+        result = tsne.fit_transform(kebab_codes)
+        min_x = np.min(result[:, 0])
+        max_x = np.max(result[:, 0])
+        min_y = np.min(result[:, 1])
+        max_y = np.max(result[:, 1])
+        show_result_x = (result[:, 0] - min_x) / (max_x - min_x)
+        show_result_y = (result[:, 1] - min_y) / (max_y - min_y)
+        self.tsne_results = np.stack((show_result_x, show_result_y), axis=1)
+        colors = ['red', 'blue', 'yellow', 'green', 'purple']
+        for i in range(5):
+            color = colors[i]
+            mask = (self.labels == i)
+            selected_result_x = self.tsne_results[:1000, 0][mask]
+            selected_result_y = self.tsne_results[:1000, 1][mask]
+            plt.scatter(selected_result_x, selected_result_y, c='black')
+            mean_result_x = show_result_x[self.n + i]
+            mean_result_y = show_result_y[self.n + i]
+            plt.scatter(mean_result_x, mean_result_y, c=color)
+        plt.show()
+        plt.savefig('/home/shenguanlin/kebab.png')
+
     def tsne(self):
         """TSNE process of the data
         """
@@ -78,12 +112,10 @@ class Backend():
         self.tsne_results = np.stack((show_result_x, show_result_y), axis=1)
         
         #test
-        
         colors = ['red', 'blue', 'yellow', 'green', 'purple']
         for i in range(5):
             color = colors[i]
             mask = (self.labels == i)
-            indice = np.arange(0, self.n)
             selected_result_x = self.tsne_results[:, 0][mask]
             selected_result_y = self.tsne_results[:, 1][mask]
             plt.scatter(selected_result_x, selected_result_y, c=color)
@@ -92,7 +124,50 @@ class Backend():
         plt.savefig('/home/shenguanlin/test.png')
         
     
+    def get_heatmap(self):
+        """Get the heatmap
+        """
+        point_places = self.tsne_results * self.resolution
+        point_weight = self.chamfer_distances
+        mean_cd = np.mean(point_weight)
+        point_weight = point_weight / mean_cd
+        grid_x, grid_y = np.meshgrid(np.arange(0, self.resolution), np.arange(0, self.resolution))
+        grid_x = (grid_x + 0.5).astype(np.float32)
+        grid_y = (grid_y + 0.5).astype(np.float32)
 
+
+        for i in range(5):
+            #calculate the sigma in the gauss kernel
+            mask = (self.labels == i)
+            n = int(np.sum(mask))
+            xs = point_places[:, 0][mask]
+            ys = point_places[:, 1][mask]
+            weights = point_weight[mask]
+            iqr = np.quantile(xs, 0.75) - np.quantile(xs, 0.25)
+            h = 1.06 * min(np.std(xs), iqr / 1.34) * (n ** -0.2)
+            h2 = h * h
+
+            grid_x_places = grid_x.reshape(self.resolution, self.resolution, 1).repeat(n, axis=2) 
+            grid_y_places = grid_y.reshape(self.resolution, self.resolution, 1).repeat(n, axis=2) 
+            x_places = xs.reshape(1, n).repeat(self.resolution ** 2, axis=0).reshape(self.resolution, self.resolution, n)
+            y_places = ys.reshape(1, n).repeat(self.resolution ** 2, axis=0).reshape(self.resolution, self.resolution, n)
+            grid_weight = weights.reshape(1, n).repeat(self.resolution ** 2, axis=0).reshape(self.resolution, self.resolution, n)
+            dist = np.sqrt((grid_x_places - x_places) ** 2 + (grid_y_places - y_places) ** 2)
+            gaussian_dist = np.exp(-(dist / h) * (dist / h) / 2) / 2.5066
+            weight_gaussian_dist = gaussian_dist * grid_weight
+            density = np.sum(weight_gaussian_dist, axis=2) / np.sum(weights) / h2
+            max_density = np.max(density)
+            density = density / max_density 
+            density = density[::-1, :]
+            ax = sns.heatmap(density)
+            plt.show()
+            plt.savefig('/home/shenguanlin/heatmap_' + str(i) + '.png')
+            ax.clear()
+            plt.clf()
+            plt.cla()
+            plt.close()
+
+            
 
 
     def get_json_result(self):
@@ -118,4 +193,5 @@ class Backend():
 
 a = Backend()
 a.tsne()
+a.get_heatmap()
 a.get_json_result()
