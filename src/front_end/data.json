@@ -6,7 +6,9 @@
             "tsneX": 0.1,
             "comment": "expected X, Y distribute in [0,1]",
             "tsneY": 0.1,
-            "img": "../img/example1.png"
+            "gtImg": "../img/example1.png",
+            "reconImg": "../img/example1.png",
+            "chamfer": 0.2
         },{
             "id": "02",
             "class": "toilet",
@@ -41,7 +43,7 @@
                 "class": "chair",
                 "density": [0.2, 0, 0.1, 1.0],
                 "comment1": "density array should be at resolution*resolution size, densitymap[i][j] = density[i*resolution + j]",
-                "comment2": "density used be normalized to [0,1]"
+                "comment2": "density should be normalized to [0,1]"
             },{
                 "class": "toilet",
                 "density": [0, 0, 0.1, 0.2]

@@ -22,7 +22,10 @@ var svg = d3.select('#svg')
   .attr('width', w)
   .attr('height', h)
 
-function plot (X, Y, d) {
+var tip = d3.select('.tip')
+  .style('opacity', 0)
+
+function plot (X, Y, d, extraInfo) {
   svg.selectAll('circle')
     .data(d)
     .enter()
@@ -33,7 +36,17 @@ function plot (X, Y, d) {
     .attr('cy', function (d) {
       return Y(d)
     })
-    .attr('r', 2.5)
+    .attr('r', 3)
+    .on('click', function (d, i) {
+      console.log(d, i)
+      tip.transition()
+        .duration(200)
+        .style('opacity', 0.9)
+      console.log(d)
+      tip.html('<img src="' + extraInfo['reconImg'][i] + '" alt="the img of the shape">')
+        .style('left', (d.pageX) + 'px')
+        .style('top', (d.pageY - 28) + 'px')
+    })
 
   console.log(svg)
 }
@@ -47,8 +60,11 @@ function setColor (C, d) {
 }
 function getColorByClasses (label) {
   let colors = {
-    'chair': 'rgb(255, 241, 0)',
-    'toilet': 'rgb(255, 140, 0)' }
+    'plane': 'rgb(255, 241, 0)',
+    'chair': 'rgb(0, 158, 73)',
+    'lamp': 'rgb(232, 17, 35)',
+    'sofa': 'rgb(236, 0, 140)',
+    'table': 'rgb(104, 33, 122)' }
   return colors[label]
   // 'rgb(232, 17, 35)',
   // 'rgb(236, 0, 140)',
@@ -90,9 +106,10 @@ function get_points_by_class (label, Y, cls) {
 }
 
 $.ajaxSetup({ cache: false }) // Jquery tend to cache old file
-$.getJSON('data.json', function (file) {
+$.getJSON('./picture/result.json', function (file) {
   console.log('cao')
   // load objects
+  let extraInfo = {}
   let tsneXs = []
   let tsneYs = []
   let classes = []
@@ -107,41 +124,41 @@ $.getJSON('data.json', function (file) {
     imgSrcs.push(data.img)
     ids2index[data.id] = i
   }
-
+  extraInfo['reconImg'] = imgSrcs
   // load transitions
   let transitions = []
-  for (let trans of file.transitions) {
-    transitions.push(trans)
-  }
+  // for (let trans of file.transitions) {
+  //   transitions.push(trans)
+  // }
 
   let X = (d) => { return tsneXs[d] * w }
   let Y = (d) => { return tsneYs[d] * h }
   let C = (d) => { return getColorByClasses(classes[d]) }
   let d = [...Array(tsneXs.length).keys()]
   console.log(d)
-  plot(X, Y, d)
+  plot(X, Y, d, extraInfo)
   setColor(C, d)
 
-  lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index)
+  // lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index)
 
-  // density map
-  let densityMapData = file['density_map']
-  let resolution = densityMapData['resolution']
-  let classDensityGrid = {}
+  // // density map
+  // let densityMapData = file['density_map']
+  // let resolution = densityMapData['resolution']
+  // let classDensityGrid = {}
 
-  for (let classDensity of densityMapData['densities']) {
-    let densityClass = classDensity['class']
-    let density = classDensity['density']
-    classDensityGrid[densityClass] = density
-  }
+  // for (let classDensity of densityMapData['densities']) {
+  //   let densityClass = classDensity['class']
+  //   let density = classDensity['density']
+  //   classDensityGrid[densityClass] = density
+  // }
 
-  // TODO find max density
+  // // TODO find max density
 
-  let heatmapColor = (point, i) => {
-    console.log(i, classDensityGrid['chair'][i])
-    return 'rgba(25, 102, 102,' + classDensityGrid['chair'][i] + ')'
-  }
-  drawDensityMap(resolution, heatmapColor)
+  // let heatmapColor = (point, i) => {
+  //   console.log(i, classDensityGrid['chair'][i])
+  //   return 'rgba(25, 102, 102,' + classDensityGrid['chair'][i] + ')'
+  // }
+  // drawDensityMap(resolution, heatmapColor)
 })
 
 function drawDensityMap (resolution, heatmapColor) {

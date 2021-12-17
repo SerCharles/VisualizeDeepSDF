@@ -83,6 +83,19 @@ svg:not(.hover) text:hover, .hover tspan:hover {
   background: #04AA6D; /* Green background */
   cursor: pointer; /* Cursor on hover */
 }
+
+.tip {	
+    position: absolute;			
+    text-align: center;			
+    width: 400px;					
+    height: 350px;					
+    padding: 2px;				
+    font: 12px sans-serif;		
+    background: lightsteelblue;	
+    border: 0px;		
+    border-radius: 8px;			
+    pointer-events: none;			
+}
 </style>
 <body>
 
@@ -101,6 +114,7 @@ svg:not(.hover) text:hover, .hover tspan:hover {
 <div style="position: absolute;" id="canvas"></div>
 <div style="position: absolute;" id="svg"></div>
 <div id="line"></div>
+<div class="tip"></div>
 <!-- <div style="position: absolute;">
   <div>
   <button id="button0" class="interactable">class 0</button>
