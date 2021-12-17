@@ -25,6 +25,12 @@ var svg = d3.select('#svg')
 var tip = d3.select('.tip')
   .style('opacity', 0)
 
+d3.select('body')
+  .on('click', function (d, i) {
+    tip.style('opacity', 0)
+      .style('transition', 'all 0.5s')
+  })
+
 function plot (X, Y, d, extraInfo) {
   svg.selectAll('circle')
     .data(d)
@@ -42,10 +48,11 @@ function plot (X, Y, d, extraInfo) {
       tip.transition()
         .duration(200)
         .style('opacity', 0.9)
+        .style('transition', 'all 0.5s')
       console.log(d)
       tip.html('<img src="' + extraInfo['reconImg'][i] + '" alt="the img of the shape">')
         .style('left', (d.pageX) + 'px')
-        .style('top', (d.pageY - 28) + 'px')
+        .style('top', (d.pageY) + 'px')
     })
 
   console.log(svg)
@@ -60,11 +67,11 @@ function setColor (C, d) {
 }
 function getColorByClasses (label) {
   let colors = {
-    'plane': 'rgb(255, 241, 0)',
-    'chair': 'rgb(0, 158, 73)',
-    'lamp': 'rgb(232, 17, 35)',
-    'sofa': 'rgb(236, 0, 140)',
-    'table': 'rgb(104, 33, 122)' }
+    'plane': 'rgb(126, 161, 116)',
+    'chair': 'rgb(244, 185, 116)',
+    'lamp': 'rgb(225, 141, 172)',
+    'sofa': 'rgb(147, 162, 169)',
+    'table': 'rgb(39, 104, 147)' }
   return colors[label]
   // 'rgb(232, 17, 35)',
   // 'rgb(236, 0, 140)',
