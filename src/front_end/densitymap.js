@@ -7,7 +7,7 @@ async function load (url) {
   return [data, shape]
 }
 
-var w = window.innerWidth
+var w = window.innerHeight
 var h = window.innerHeight
 var h2 = h * h
 
@@ -89,6 +89,7 @@ function get_points_by_class (label, Y, cls) {
   return class_data
 }
 
+$.ajaxSetup({ cache: false }) // Jquery tend to cache old file
 $.getJSON('data.json', function (file) {
   console.log('cao')
   // load objects
@@ -122,7 +123,46 @@ $.getJSON('data.json', function (file) {
   setColor(C, d)
 
   lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index)
+
+  // density map
+  let densityMapData = file['density_map']
+  let resolution = densityMapData['resolution']
+  let classDensityGrid = {}
+
+  for (let classDensity of densityMapData['densities']) {
+    let densityClass = classDensity['class']
+    let density = classDensity['density']
+    classDensityGrid[densityClass] = density
+  }
+
+  // TODO find max density
+
+  let heatmapColor = (point, i) => {
+    console.log(i, classDensityGrid['chair'][i])
+    return 'rgba(25, 102, 102,' + classDensityGrid['chair'][i] + ')'
+  }
+  drawDensityMap(resolution, heatmapColor)
 })
+
+function drawDensityMap (resolution, heatmapColor) {
+  let context = canvas.node().getContext('2d')
+
+  let gridSize = h / resolution
+  let grid = d3.merge(d3.range(0, h / gridSize).map(function (i) {
+    return d3.range(0, w / gridSize).map(function (j) { return [j * gridSize + gridSize / 2, i * gridSize + gridSize / 2] })
+  }))
+
+  grid.forEach(function (point, idx) {
+    context.beginPath()
+    // console.log(densities)
+    context.fillStyle = heatmapColor(point, idx)
+
+    // Subtract to get the corner of the grid cell
+    context.rect(point[0] - gridSize / 2, point[1] - gridSize / 2, gridSize, gridSize)
+    context.fill()
+    context.closePath()
+  })
+}
 
 function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index) {
   let transionsXs = []

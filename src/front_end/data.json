@@ -4,6 +4,7 @@
             "id": "01",
             "class": "chair",
             "tsneX": 0.1,
+            "comment": "expected X, Y distribute in [0,1]",
             "tsneY": 0.1,
             "img": "../img/example1.png"
         },{
@@ -22,6 +23,7 @@
                 {
                     "frame": 0,
                     "sourceWeight": 0.1,
+                    "comment": "the interplolate x = sourceWeight * target x + (1 - sourceWeight) * sourceWeight",
                     "img": "../img/transion_01_02_0.1.png"
                 },{
                     "frame": 1,
@@ -30,5 +32,20 @@
                 }
             ]
         }
-    ]
+    ],
+    "density_map":{
+        "resolution": 2,
+        "densities":
+        [
+            {
+                "class": "chair",
+                "density": [0.2, 0, 0.1, 1.0],
+                "comment1": "density array should be at resolution*resolution size, densitymap[i][j] = density[i*resolution + j]",
+                "comment2": "density used be normalized to [0,1]"
+            },{
+                "class": "toilet",
+                "density": [0, 0, 0.1, 0.2]
+            }
+        ]
+    }
 }
