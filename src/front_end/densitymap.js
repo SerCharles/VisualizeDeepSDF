@@ -1,12 +1,3 @@
-// import { fromArrayBuffer } from "numpy-parser";
-async function load (url) {
-  const response = await fetch(url)
-  const arrayBuffer = await response.arrayBuffer()
-  const { data, shape } = await fromArrayBuffer(arrayBuffer)
-  console.log(data, shape)
-  return [data, shape]
-}
-
 var w = window.innerHeight
 var h = window.innerHeight
 var h2 = h * h
@@ -17,6 +8,12 @@ var canvas = d3.select('#canvas')
   .attr('height', h)
   .attr('position', 'absolute')
 
+var animation = d3.select('#animation')
+  .style('left', w + 'px')
+  .style('top', h / 8 + 'px')
+
+var animationImg = d3.select('#animationImg')
+
 var svg = d3.select('#svg')
   .append('svg')
   .attr('width', w)
@@ -24,6 +21,8 @@ var svg = d3.select('#svg')
 
 var tip = d3.select('.tip')
   .style('opacity', 0)
+
+var classses = ['plane', 'chair', 'table', 'sofa', 'lamp']
 
 d3.select('body')
   .on('click', function (d, i) {
@@ -83,6 +82,24 @@ function getColorByClasses (label) {
   // 'rgb(186, 216, 10)'
 }
 
+function getRawColorByClasses (label) {
+  let colors = {
+    'plane': '126, 161, 116',
+    'chair': '244, 185, 116',
+    'lamp': '225, 141, 172',
+    'sofa': '147, 162, 169',
+    'table': '39, 104, 147' }
+  return colors[label]
+  // 'rgb(232, 17, 35)',
+  // 'rgb(236, 0, 140)',
+  // 'rgb(104, 33, 122)',
+  // 'rgb(0, 24, 143)',
+  // 'rgb(0, 188, 242)',
+  // 'rgb(0, 178, 148)',
+  // 'rgb(0, 158, 73)',
+  // 'rgb(186, 216, 10)'
+}
+
 function update_plot (Y, i) {
   svg.selectAll('circle')
     .data(Y)
@@ -97,23 +114,8 @@ function update_plot (Y, i) {
     })
 }
 
-var init_data = []
-for (let i = 0; i < 1000; i++) {
-  init_data.push([0, 0])
-}
-
-function get_points_by_class (label, Y, cls) {
-  class_data = []
-  for (let i = 0; i < 1000; i++) {
-    if (label[i] == cls) {
-      class_data.push(Y[i])
-    }
-  }
-  return class_data
-}
-
 $.ajaxSetup({ cache: false }) // Jquery tend to cache old file
-$.getJSON('./picture/result.json', function (file) {
+$.getJSON('result.json', function (file) {
   console.log('cao')
   // load objects
   let extraInfo = {}
@@ -122,21 +124,24 @@ $.getJSON('./picture/result.json', function (file) {
   let classes = []
   let ids2index = {}
   let imgSrcs = []
+  let chamferLosses = []
   console.log(file)
   for (let i in file.data) {
     let data = file.data[i]
     tsneXs.push(data.tsneX)
     tsneYs.push(data.tsneY)
     classes.push(data.class)
-    imgSrcs.push(data.img)
+    imgSrcs.push(data['reconImg'])
+    chamferLosses.push(data['chamferDist'])
     ids2index[data.id] = i
   }
   extraInfo['reconImg'] = imgSrcs
+  extraInfo['cd'] = chamferLosses
   // load transitions
   let transitions = []
-  // for (let trans of file.transitions) {
-  //   transitions.push(trans)
-  // }
+  for (let trans of file.transitions) {
+    transitions.push(trans)
+  }
 
   let X = (d) => { return tsneXs[d] * w }
   let Y = (d) => { return tsneYs[d] * h }
@@ -146,26 +151,34 @@ $.getJSON('./picture/result.json', function (file) {
   plot(X, Y, d, extraInfo)
   setColor(C, d)
 
-  // lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index)
+  lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index, extraInfo)
 
-  // // density map
-  // let densityMapData = file['density_map']
-  // let resolution = densityMapData['resolution']
-  // let classDensityGrid = {}
+  // density map
+  let densityMapData = file['heatmap']
+  let resolution = densityMapData['resolution']
+  let classDensityGrid = {}
 
-  // for (let classDensity of densityMapData['densities']) {
-  //   let densityClass = classDensity['class']
-  //   let density = classDensity['density']
-  //   classDensityGrid[densityClass] = density
-  // }
+  for (let classDensity of densityMapData['density']) {
+    let densityClass = classDensity['class']
+    let density = classDensity['data']
+    classDensityGrid[densityClass] = density
+  }
 
-  // // TODO find max density
+  // TODO find max density
 
-  // let heatmapColor = (point, i) => {
-  //   console.log(i, classDensityGrid['chair'][i])
-  //   return 'rgba(25, 102, 102,' + classDensityGrid['chair'][i] + ')'
-  // }
-  // drawDensityMap(resolution, heatmapColor)
+  let heatmapColor = (point, i) => {
+    let maxClass = ''
+    let maxDensity = -1
+    for (let cls of classses) {
+      if (classDensityGrid[cls][i] > maxDensity) {
+        maxClass = cls
+        maxDensity = classDensityGrid[cls][i]
+      }
+    }
+    // console.log(i, 'rgba(' + getRawColorByClasses('chair') + classDensityGrid['chair'][i] + ')')
+    return 'rgba(' + getRawColorByClasses(maxClass) + ',' + classDensityGrid[maxClass][i] + ')'
+  }
+  drawDensityMap(resolution, heatmapColor)
 })
 
 function drawDensityMap (resolution, heatmapColor) {
@@ -188,9 +201,10 @@ function drawDensityMap (resolution, heatmapColor) {
   })
 }
 
-function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index) {
+function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index, extraInfo) {
   let transionsXs = []
   let transionsYs = []
+  let transImg = []
   for (let t = 0; t < transitions.length; t += 1) {
     let transition = transitions[t]
     let sid = transition['sourceId']
@@ -204,6 +218,7 @@ function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index) {
     let frames = transition['frames']
     transionsXs.push(sx)
     transionsYs.push(sy)
+    transImg.push(extraInfo['reconImg'][sid])
     for (let frame of frames) {
       let sw = frame['sourceWeight']
       let tw = 1 - sw
@@ -211,11 +226,13 @@ function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index) {
       transionsXs.push(fx)
       let fy = sw * ty + tw * sy
       transionsYs.push(fy)
+      transImg.push(frame['img'])
     }
     console.log(t, transitions.length - 1, t === (transitions.length - 1))
     if (t === (transitions.length - 1)) {
       transionsXs.push(tx)
       transionsYs.push(ty)
+      transImg.push(extraInfo['reconImg'][tid])
     }
   }
   console.log(transionsXs)
@@ -247,10 +264,24 @@ function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index) {
       .attr('stroke-dasharray', totalLength + ' ' + totalLength)
       .attr('stroke-dashoffset', totalLength)
       .transition()
-      .duration(4000)
+      .duration(10000)
+      .on('end', repeat)
       .ease(d3.easeLinear)
       .attr('stroke-dashoffset', 0)
-      .on('end', repeat)
+      .tween('text', function (t) {
+        const i = d3.interpolateRound(0, transImg.length - 1)
+        let currId = -1
+        return function (t) {
+          console.log(t)
+          let id = i(t)
+          if (id > currId) {
+            console.log(animationImg)
+            let err = animationImg.attr('src', transImg[id])
+            console.log(err)
+            currId = id
+          }
+        }
+      })
   }
   repeat()
 }
