@@ -6,6 +6,7 @@ import glob
 import numpy as np
 import torch
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -96,7 +97,38 @@ class Backend():
             mean_result_y = show_result_y[self.n + i]
             plt.scatter(mean_result_x, mean_result_y, c=color)
         plt.show()
-        plt.savefig('/home/shenguanlin/kebab.png')
+        plt.savefig('/home/shenguanlin/tsne_mean.png')
+        plt.clf()
+        plt.cla()
+        plt.close()
+
+    def pca(self):
+        """PCA process of the data
+        """
+        pca = PCA(n_components=2)
+        result = pca.fit_transform(self.codes)
+        min_x = np.min(result[:, 0])
+        max_x = np.max(result[:, 0])
+        min_y = np.min(result[:, 1])
+        max_y = np.max(result[:, 1])
+        show_result_x = (result[:, 0] - min_x) / (max_x - min_x)
+        show_result_y = (result[:, 1] - min_y) / (max_y - min_y)
+        self.pca_results = np.stack((show_result_x, show_result_y), axis=1)
+
+        #test
+        colors = ['red', 'blue', 'yellow', 'green', 'purple']
+        for i in range(5):
+            color = colors[i]
+            mask = (self.labels == i)
+            selected_result_x = self.pca_results[:, 0][mask]
+            selected_result_y = self.pca_results[:, 1][mask]
+            plt.scatter(selected_result_x, selected_result_y, c=color)
+
+        plt.show()
+        plt.savefig('/home/shenguanlin/pca.png')
+        plt.clf()
+        plt.cla()
+        plt.close()
 
     def tsne(self):
         """TSNE process of the data
@@ -121,7 +153,10 @@ class Backend():
             plt.scatter(selected_result_x, selected_result_y, c=color)
 
         plt.show()
-        plt.savefig('/home/shenguanlin/test.png')
+        plt.savefig('/home/shenguanlin/tsne.png')
+        plt.clf()
+        plt.cla()
+        plt.close()
         
     
     def get_heatmap(self):
@@ -135,7 +170,7 @@ class Backend():
         grid_x = (grid_x + 0.5).astype(np.float32)
         grid_y = (grid_y + 0.5).astype(np.float32)
 
-
+        self.densitys = []
         for i in range(5):
             #calculate the sigma in the gauss kernel
             mask = (self.labels == i)
@@ -158,8 +193,11 @@ class Backend():
             density = np.sum(weight_gaussian_dist, axis=2) / np.sum(weights) / h2
             max_density = np.max(density)
             density = density / max_density 
-            density = density[::-1, :]
-            ax = sns.heatmap(density)
+            self.densitys.append(density)
+            
+            #test
+            show_density = density[::-1, :]
+            ax = sns.heatmap(show_density)
             plt.show()
             plt.savefig('/home/shenguanlin/heatmap_' + str(i) + '.png')
             ax.clear()
@@ -183,15 +221,31 @@ class Backend():
             the_data['tsneX'] = float(self.tsne_results[i, 0])
             the_data['tsneY'] = float(self.tsne_results[i, 1])
             type_id = self.types_id[self.labels[i]]
-            the_data['img'] = os.path.join('picture', 'pred', type_id, self.names[i] + '.png')
-            the_data['img_gt'] = os.path.join('picture', 'gt', type_id, self.names[i] + '.png')
+            the_data['reconImg'] = os.path.join('picture', 'pred', type_id, self.names[i] + '.png')
+            the_data['gtImg'] = os.path.join('picture', 'gt', type_id, self.names[i] + '.png')
+            the_data['chamferDist'] = float(self.chamfer_distances[i])
             data.append(the_data)
         result['data'] = data
+        
+        heatmap = {}
+        heatmap['resolution'] = self.resolution
+        densitys = []
+        for i in range(5):
+            density = {}
+            type_name = self.types_name[i]
+            data = self.densitys[i].reshape(self.resolution ** 2).tolist()
+            density['class'] = type_name
+            density['data'] = data 
+            densitys.append(density)
+        heatmap['density'] = densitys
+        result['heatmap'] = heatmap
+        
         json_result = json.dumps(result)
         with open('/home/shenguanlin/result.json', 'w') as f:
             f.write(json_result)
 
 a = Backend()
+a.pca()
 a.tsne()
 a.get_heatmap()
 a.get_json_result()
