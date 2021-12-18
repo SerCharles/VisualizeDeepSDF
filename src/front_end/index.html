@@ -1,11 +1,243 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
-<title>Visualization assignment</title>
+<title>NodeTree</title>
+<link rel="stylesheet" href="materialize.min.css">
+<style>
 
-<body>
+svg {
+  overflow: hidden;
+}
 
+.interactable{
+  float: left; visibility: hidden
+}
+html, body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: Georgia, serif;
+}
+path { fill: none; stroke: #666; stroke-width: .5px; }
+text {
+  cursor: pointer;
+}
+svg:not(.hover) text:hover, .hover tspan:hover {
+  fill: #f99;
+}
 
-<div><text><a href="densitymap.html">densitymap</a></text></div>
+.thumb a {
+  color: #000;
+  font-weight: bold;
+  text-decoration: none;
+}
+.thumb:hover a {
+  color: #f60;
+}
 
+.slidecontainer {
+  width: 100%; /* Width of the outside container */
+}
+
+.loading{
+
+}
+
+#line{
+    width: 100%;
+    margin: 20px 0;
+    height: 300px;
+  }
+
+/* The slider itself */
+.slider {
+  -webkit-appearance: none;  /* Override default CSS styles */
+  appearance: none;
+  width: 100%; /* Full-width */
+  height: 25px; /* Specified height */
+  background: #d3d3d3; /* Grey background */
+  outline: none; /* Remove outline */
+  opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+  transition: opacity .2s;
+}
+
+/* Mouse-over effects */
+.slider:hover {
+  opacity: 1; /* Fully shown on mouse-over */
+}
+
+/* The slider handle (use -webkit- (Chrome, Opera, Safari, Edge) and -moz- (Firefox) to override default look) */
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; /* Override default look */
+  appearance: none;
+  width: 25px; /* Set a specific slider handle width */
+  height: 25px; /* Slider handle height */
+  background: #04AA6D; /* Green background */
+  cursor: pointer; /* Cursor on hover */
+}
+
+.slider::-moz-range-thumb {
+  width: 25px; /* Set a specific slider handle width */
+  height: 25px; /* Slider handle height */
+  background: #04AA6D; /* Green background */
+  cursor: pointer; /* Cursor on hover */
+}
+
+.tip {	
+    position: absolute;			
+    text-align: center;			
+    width: 800px;					
+    height: 350px;					
+    padding: 2px;				
+    font: 12px sans-serif;		
+    background: lightsteelblue;	
+    border: 0px;		
+    border-radius: 8px;			
+    pointer-events: none;			
+    z-index: 10000;
+}
+</style>
+<body >
+
+<!-- <button id="button" style="float: left;">switch align mode</button>
+<text id="mode1">Basic Algorithm</text>
+<div style="clear: both;">
+<text style="top: 50px;" id="hint"> Hint: to click the name of province or city to unfold it</text>
+</div>
+<div style="clear: both;">
+    <text style="top: 50px;" id="hint">Basic Algorithm: the height of a node adds up heights of its children nodes'</text>
+</div>
+<div style="clear: both;">
+    <text style="top: 50px;" id="hint">Reingold-Tilford Algorithm: the position of a node will consider its layer's blanks to compact layout</text>
+</div> -->
+
+<div style="position: absolute; top: 0;" id="canvas"></div>
+<div style="position: absolute; top: 0;" id="svg"></div>
+<!-- <div style="position: absolute; top: 0;" id="animation">
+  <img id="animationImg"/>
+</div> -->
+
+<div style="position: absolute; top: 0;" class="container" id="comment">
+  <div class="row">
+    <div class="col s12"><h2>基于深度学习的三维重建结果可视化</h2></div>
+    <div class="col s12 m4 l2"><h4>小组成员</h4></div>
+    <div class="col s12 m4 l2"><h4>黎思宇</h4></div>
+    <div class="col s12 m4 l2"><h4>陈刚</h4></div>
+    <div class="col s12 m4 l2"><h4>沈冠霖</h4></div>
+  </div>
+  <div class="row">
+    <div class="col s12 m6 l3" id="animationButton"><a class="waves-effect waves-light btn">
+      <div id="animationButtonHandler">显示路径动画</div></a>
+    </div>
+    <div class="col s12 m6 l3" id="modeButton"><a class="waves-effect waves-light btn">
+      <div id="modeButtonHandler">显示tsne散点图</div></a>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(126, 161, 116)">
+      <span class="white-text" >类别:飞机</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(244, 185, 116)">
+      <span class="white-text" >类别:椅子</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(225, 141, 172)">
+      <span class="white-text" >类别:台灯</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(147, 162, 169)">
+      <span class="white-text" >类别:沙发</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(39, 104, 147)">
+      <span class="white-text" >类别:桌子</span>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col s12 m4 l1">
+      <div class="circle" style="background-color:rgb(126, 161, 116);   height: 25px;
+      width: 25px;display: inline-block;">
+      </div>
+    </div>
+    <div class="col s12 m4 l4">
+      <div style="font-size: 18px;"> 圆越大，损失函数（Chamfer Distance)越大</div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="circle" style="background-color:rgb(126, 161, 116);   height: 50px;
+      width: 50px;display: inline-block;">
+      </div>
+    </div>
+  </div>
+
+    <div class="row">
+      <div class="col s12 m4 l1">
+        <div class="circle" style="background-color:rgb(218, 240, 212);   height: 25px;
+        width: 25px;display: inline-block;">
+        </div>
+      </div>
+      <div class="col s12 m4 l3">
+        <div style="font-size: 18px;"> 颜色越深，density值越大</div>
+      </div>
+      <div class="col s12 m4 l1">
+        <div class="circle" style="background-color:rgb(126, 161, 116);   height: 25px;
+        width: 25px;display: inline-block;">
+        </div>
+      </div>
+
+  </div>
+  <div class="row">
+    <div class="col s12 m4 l2"><h5>路径结果</h5></div>
+    <div class="col s12 m4 l5"  id="animation">
+      <img id="animationImg"/>
+    </div>
+  </div>
+  
+
+</div>
+
+<div id="line"></div>
+<div class="tip"></div>
+</div>
+<!-- <div style="position: absolute;">
+  <div>
+  <button id="button0" class="interactable">class 0</button>
+  <button id="button1" class="interactable">class 1</button>
+  <button id="button2" class="interactable">class 2</button>
+  <button id="button3" class="interactable">class 3</button>
+  <button id="button4" class="interactable">class 4</button>
+  <button id="button5" class="interactable" >class 5</button>
+  <button id="button6" class="interactable">class 6</button>
+  <button id="button7" class="interactable">class 7</button>
+  <button id="button8" class="interactable">class 8</button>
+  <button id="button9" class="interactable">class 9</button>
+  <button id="buttonall" class="interactable">class all</button>
+  </div>
+  <div>
+    <button id="buttontriw" class="interactable">kernel triweight</button>
+    <button id="buttontric" class="interactable">kernel tricube</button>
+    <button id="buttongau" class="interactable">kernel guassian</button>
+    <button id="buttoncos" class="interactable">kernel cosine</button>
+    <div class="slidecontainer" >
+      <div class="interactable">slider for scale factor</div>
+      <input class="interactable" type="range" min="1" max="100" value="50" class="slider" id="range">
+    </div>
+  </div>
+
+</div> -->
+
+<!-- <div style="position: absolute;" class="loading">
+loading data and applying t-sne algorithms , please wait for about 30 seconds....</div> -->
+<script src="jquery.js"></script>
+<script src="d3.min.js"></script>
+<script src="densitymap.js"></script>
+<script src="materialize.min.js"></script>
 </body>
 </html>

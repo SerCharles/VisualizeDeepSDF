@@ -4,8 +4,8 @@ var h2 = h * h
 
 var comment = d3.select('#comment')
   .style('left', w + 'px')
-  .style('top', h / 8 + 'px')
-  .style('width', window.innerWidth - w)
+  .style('top', 0 + 'px')
+  .style('width', window.innerWidth - w + 'px')
 
 var canvas = d3.select('#canvas')
   .append('canvas')
@@ -24,6 +24,12 @@ d3.select('#animationButton')
   .on('click', function (d, i) {
     isRepeat = !isRepeat
     animationRepeat()
+
+    if (!isRepeat) {
+      d3.select('#animationButtonHandler').text('显示路径动画')
+    } else {
+      d3.select('#animationButtonHandler').text('关闭路径动画')
+    }
   })
 
 var svg = d3.select('#svg')
@@ -38,6 +44,37 @@ var gtClassses = ['plane', 'chair', 'table', 'sofa', 'lamp']
 
 var isGrid = true
 var resolution = 40
+
+d3.select('#modeButton')
+  .on('click', function () {
+    isRepeat = false
+    animationRepeat()
+    isGrid = !isGrid
+    svg.remove()
+    canvas.remove()
+    svg = d3.select('#svg')
+      .append('svg')
+      .attr('width', w)
+      .attr('height', h)
+    canvas = d3.select('#canvas')
+      .append('canvas')
+      .attr('width', w)
+      .attr('height', h)
+      .attr('position', 'absolute')
+
+    if (isGrid) {
+      loadData('grid_result.json')
+    } else {
+      loadData('tsne_result.json')
+    }
+
+    if (isGrid) {
+      d3.select('#modeButtonHandler').text('显示tsne散点图')
+    } else {
+      d3.select('#modeButtonHandler').text('显示格点图')
+    }
+  })
+
 var Point2Grid = (x, y) => {
   if (x > 1 || x < 0 || y > 1 || y < 0) return -1
   let xi = Math.floor(x * resolution)
@@ -86,23 +123,27 @@ d3.select('body')
 
 var maxCd = Math.log(0.04509 + 0.0001)
 var minCd = Math.log(0.0000016788 + 0.0001)
+
+function getR (cd) {
+  let r = 7 * (Math.log(cd + 0.0001) - minCd) / (maxCd - minCd) + 3
+  return r
+}
 function plot (X, Y, d, extraInfo) {
   svg.selectAll('circle')
     .data(d)
     .enter()
     .append('circle')
-    .attr('cx', function (d) {
-      return X(d)
+    .attr('cx', function (d, i) {
+      return X(d) + getR(extraInfo['cd'][i]) > w ? w - getR(extraInfo['cd'][i]) : X(d) - getR(extraInfo['cd'][i]) < 0 ? getR(extraInfo['cd'][i]) : X(d)
     })
-    .attr('cy', function (d) {
-      return Y(d)
+    .attr('cy', function (d, i) {
+      return Y(d) + getR(extraInfo['cd'][i]) > h ? h - getR(extraInfo['cd'][i]) : Y(d) - getR(extraInfo['cd'][i]) < 0 ? getR(extraInfo['cd'][i]) : Y(d)
     })
     .attr('id', function (d, i) {
       return 'circle' + extraInfo['id'][i]
     })
     .attr('r', function (d, i) {
-      let cd = extraInfo['cd'][i]
-      let r = 7 * (Math.log(cd + 0.0001) - minCd) / (maxCd - minCd) + 3
+      let r = getR(extraInfo['cd'][i])
       return r
     })
     .on('click', function (d, i) {
@@ -179,95 +220,102 @@ function update_plot (Y, i) {
 }
 
 $.ajaxSetup({ cache: false }) // Jquery tend to cache old file
-$.getJSON('grid_result.json', function (file) {
-  console.log('cao')
-  // load objects
-  let extraInfo = {}
-  let tsneXs = []
-  let ids = []
-  let tsneYs = []
-  let classes = []
-  let ids2index = {}
-  let imgSrcs = []
-  let gtImgSrcs = []
-  let chamferLosses = []
-  console.log(file)
-  for (let i in file.data) {
-    let data = file.data[i]
-    tsneXs.push(data['x'])
-    tsneYs.push(data['y'])
-    ids.push(data['id'])
-    if (isGrid) {
-      Grid2Point[Point2Grid(data['x'], data['y'])] = {
-        'id': data['id'],
-        'gtImg': data['gtImg'],
-        'reconImg': data['reconImg']
+
+function loadData (fileSrc) {
+  $.getJSON(fileSrc, function (file) {
+    console.log('cao')
+    // load objects
+    let extraInfo = {}
+    let tsneXs = []
+    let ids = []
+    let tsneYs = []
+    let classes = []
+    let ids2index = {}
+    let imgSrcs = []
+    let gtImgSrcs = []
+    let chamferLosses = []
+    console.log(file)
+    for (let i in file.data) {
+      let data = file.data[i]
+      tsneXs.push(data['x'])
+      tsneYs.push(data['y'])
+      ids.push(data['id'])
+      if (isGrid) {
+        Grid2Point[Point2Grid(data['x'], data['y'])] = {
+          'id': data['id'],
+          'gtImg': data['gtImg'],
+          'reconImg': data['reconImg']
+        }
       }
+      classes.push(data.class)
+      imgSrcs.push(data['reconImg'])
+      gtImgSrcs.push(data['gtImg'])
+      chamferLosses.push(data['chamferDist'])
+      ids2index[data.id] = i
     }
-    classes.push(data.class)
-    imgSrcs.push(data['reconImg'])
-    gtImgSrcs.push(data['gtImg'])
-    chamferLosses.push(data['chamferDist'])
-    ids2index[data.id] = i
-  }
-  console.log(Grid2Point)
-  extraInfo['gtImg'] = gtImgSrcs
-  extraInfo['reconImg'] = imgSrcs
-  extraInfo['cd'] = chamferLosses
-  extraInfo['id'] = ids
-  // load transitions
-  let transitions = []
-  for (let trans of file.transitions) {
-    transitions.push(trans)
-  }
+    console.log(Grid2Point)
+    extraInfo['gtImg'] = gtImgSrcs
+    extraInfo['reconImg'] = imgSrcs
+    extraInfo['cd'] = chamferLosses
+    extraInfo['id'] = ids
+    // load transitions
+    let transitions = []
+    for (let trans of file.transitions) {
+      transitions.push(trans)
+    }
 
-  let X = (d) => { return tsneXs[d] * w }
-  let Y = (d) => { return tsneYs[d] * h }
-  let C = (d) => { return getColorByClasses(classes[d]) }
-  let d = [...Array(tsneXs.length).keys()]
-  console.log(d)
-  plot(X, Y, d, extraInfo)
-  setColor(C, d)
+    let X = (d) => { return tsneXs[d] * w }
+    let Y = (d) => { return tsneYs[d] * h }
+    let C = (d) => { return getColorByClasses(classes[d]) }
+    let d = [...Array(tsneXs.length).keys()]
+    console.log(d)
+    plot(X, Y, d, extraInfo)
+    setColor(C, d)
 
-  lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index, extraInfo)
+    lineMoveFromTransition(transitions, tsneXs, tsneYs, ids2index, extraInfo)
 
-  // density map
-  let densityMapData = file['heatmap']
-  resolution = densityMapData['resolution']
-  let classDensityGrid = {}
+    // density map
+    let densityMapData = file['heatmap']
+    resolution = densityMapData['resolution']
+    let classDensityGrid = {}
 
-  for (let classDensity of densityMapData['density']) {
-    let densityClass = classDensity['class']
-    let density = classDensity['data']
-    classDensityGrid[densityClass] = density
-  }
+    for (let classDensity of densityMapData['density']) {
+      let densityClass = classDensity['class']
+      let density = classDensity['data']
+      classDensityGrid[densityClass] = density
+    }
 
-  // TODO find max density
-  console.log(classDensityGrid)
-  console.log(gtClassses)
-  let heatmapColor = (point, i) => {
-    let maxClass = ''
-    let maxDensity = -1
-    for (let cls of gtClassses) {
-      if (classDensityGrid[cls][i] > maxDensity) {
-        maxClass = cls
-        maxDensity = classDensityGrid[cls][i]
+    // TODO find max density
+    console.log(classDensityGrid)
+    console.log(gtClassses)
+    console.log(resolution)
+    let heatmapColor = (point, i) => {
+      let maxClass = ''
+      let maxDensity = -1
+      for (let cls of gtClassses) {
+        if (classDensityGrid[cls][i] > maxDensity) {
+          maxClass = cls
+          maxDensity = classDensityGrid[cls][i]
+        }
       }
+      // console.log(getRawColorByClasses(maxClass), classDensityGrid[maxClass][i])
+      // console.log(i, 'rgba(' + getRawColorByClasses('chair') + classDensityGrid['chair'][i] + ')')
+      return 'rgba(' + getRawColorByClasses(maxClass) + ',' + classDensityGrid[maxClass][i] + ')'
     }
-    // console.log(getRawColorByClasses(maxClass), classDensityGrid[maxClass][i])
-    // console.log(i, 'rgba(' + getRawColorByClasses('chair') + classDensityGrid['chair'][i] + ')')
-    return 'rgba(' + getRawColorByClasses(maxClass) + ',' + classDensityGrid[maxClass][i] + ')'
-  }
-  drawDensityMap(resolution, heatmapColor)
-})
+    drawDensityMap(resolution, heatmapColor)
+  })
+}
 
 function drawDensityMap (resolution, heatmapColor) {
   let context = canvas.node().getContext('2d')
 
   let gridSize = h / resolution
-  let grid = d3.merge(d3.range(0, h / gridSize).map(function (i) {
-    return d3.range(0, w / gridSize).map(function (j) { return [j * gridSize + gridSize / 2, i * gridSize + gridSize / 2] })
+
+  let grid = d3.merge(d3.range(0, resolution).map(function (i) {
+    return d3.range(0, resolution).map(function (j) { return [j * gridSize + gridSize / 2, i * gridSize + gridSize / 2] })
   }))
+
+  console.log(grid)
 
   grid.forEach(function (point, idx) {
     context.beginPath()
@@ -342,6 +390,10 @@ function lineMoveFromTransition (transitions, tsneXs, tsneYs, ids2index, extraIn
     svgline.selectAll('path').attr('class', 'old').remove()
 
     path = svgline.append('path')
+      .attr('d', lineFunction(data))
+      .style('stroke', 'darkred')
+      .style('stroke-width', '5')
+      .style('fill', 'none')
 
     var totalLength = path.node().getTotalLength()
 
@@ -375,3 +427,5 @@ var svgline = d3.select('#line')
   .attr('width', w)
   .attr('height', h)
   .attr('id', 'visualization')
+
+loadData('grid_result.json')
