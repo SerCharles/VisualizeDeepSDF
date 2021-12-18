@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <title>NodeTree</title>
-
+<link rel="stylesheet" href="materialize.min.css">
 <style>
 
 svg {
@@ -87,7 +87,7 @@ svg:not(.hover) text:hover, .hover tspan:hover {
 .tip {	
     position: absolute;			
     text-align: center;			
-    width: 400px;					
+    width: 800px;					
     height: 350px;					
     padding: 2px;				
     font: 12px sans-serif;		
@@ -97,7 +97,7 @@ svg:not(.hover) text:hover, .hover tspan:hover {
     pointer-events: none;			
 }
 </style>
-<body>
+<body >
 
 <!-- <button id="button" style="float: left;">switch align mode</button>
 <text id="mode1">Basic Algorithm</text>
@@ -111,13 +111,95 @@ svg:not(.hover) text:hover, .hover tspan:hover {
     <text style="top: 50px;" id="hint">Reingold-Tilford Algorithm: the position of a node will consider its layer's blanks to compact layout</text>
 </div> -->
 
-<div style="position: absolute;" id="canvas"></div>
-<div style="position: absolute;" id="svg"></div>
-<div style="position: absolute;" id="animation">
+<div style="position: absolute; top: 0;" id="canvas"></div>
+<div style="position: absolute; top: 0;" id="svg"></div>
+<!-- <div style="position: absolute; top: 0;" id="animation">
   <img id="animationImg"/>
-</div>
+</div> -->
 <div id="line"></div>
 <div class="tip"></div>
+<div style="position: absolute; top: 0;" class="container" id="comment">
+  <div class="row">
+    <div class="col s12"><h1>基于深度学习的三维重建结果可视化</h1></div>
+    <div class="col s12 m4 l2"><h4>小组成员</h4></div>
+    <div class="col s12 m4 l2"><h4>黎思宇</h4></div>
+    <div class="col s12 m4 l2"><h4>陈刚</h4></div>
+    <div class="col s12 m4 l2"><h4>沈冠霖</h4></div>
+  </div>
+  <div class="row">
+    <div class="col s12 m6 l3" id="animationButton"><a class="waves-effect waves-light btn">显示路径动画</a></div>
+    <div class="col s12 m6 l3" id="modeButton"><a class="waves-effect waves-light btn">显示tsne散点图</a></div>
+  </div>
+  <div class="row">
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(126, 161, 116)">
+      <span class="white-text" >类别:飞机</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(244, 185, 116)">
+      <span class="white-text" >类别:椅子</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(225, 141, 172)">
+      <span class="white-text" >类别:台灯</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(147, 162, 169)">
+      <span class="white-text" >类别:沙发</span>
+      </div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="card-panel" style="background-color:rgb(39, 104, 147)">
+      <span class="white-text" >类别:桌子</span>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col s12 m4 l1">
+      <div class="circle" style="background-color:rgb(126, 161, 116);   height: 25px;
+      width: 25px;display: inline-block;">
+      </div>
+    </div>
+    <div class="col s12 m4 l4">
+      <div style="font-size: 18px;"> 圆越大，损失函数（Chamfer Distance)越大</div>
+    </div>
+    <div class="col s12 m4 l1">
+      <div class="circle" style="background-color:rgb(126, 161, 116);   height: 50px;
+      width: 50px;display: inline-block;">
+      </div>
+    </div>
+  </div>
+
+    <div class="row">
+      <div class="col s12 m4 l1">
+        <div class="circle" style="background-color:rgb(218, 240, 212);   height: 25px;
+        width: 25px;display: inline-block;">
+        </div>
+      </div>
+      <div class="col s12 m4 l3">
+        <div style="font-size: 18px;"> 颜色越深，density值越大</div>
+      </div>
+      <div class="col s12 m4 l1">
+        <div class="circle" style="background-color:rgb(126, 161, 116);   height: 25px;
+        width: 25px;display: inline-block;">
+        </div>
+      </div>
+
+  </div>
+  <div class="row">
+    <div class="col s12 m4 l2"><h5>路径结果</h5></div>
+    <div class="col s12 m4 l5"  id="animation">
+      <img id="animationImg"/>
+    </div>
+  </div>
+  
+
+</div>
+
+</div>
 <!-- <div style="position: absolute;">
   <div>
   <button id="button0" class="interactable">class 0</button>
@@ -150,6 +232,6 @@ loading data and applying t-sne algorithms , please wait for about 30 seconds...
 <script src="jquery.js"></script>
 <script src="d3.min.js"></script>
 <script src="densitymap.js"></script>
-
+<script src="materialize.min.js"></script>
 </body>
 </html>
