@@ -410,3 +410,7 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+src/.gitignore
+src/front_end/picture
+*.zip
